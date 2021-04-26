@@ -7,6 +7,13 @@ const (
 	Right          = iota
 )
 
+type NotFoundError struct {
+}
+
+func (a NotFoundError) Error() string {
+	return "not found"
+}
+
 type Tree struct {
 	root *Node
 }

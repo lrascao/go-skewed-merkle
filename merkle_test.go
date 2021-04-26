@@ -54,8 +54,10 @@ func TestNonExistingProof(t *testing.T) {
 	tree := New(Hash([]byte("foo")))
 	tree.Add([]byte("bar"))
 
-	proofNotFound := tree.Proof(Hash([]byte("baz")))
-	assert.Nil(t, proofNotFound)
+	proof, err := tree.Proof(Hash([]byte("baz")))
+	assert.Nil(t, proof)
+	assert.IsType(t, err, NotFoundError{})
+	assert.Equal(t, err.Error(), "not found")
 }
 
 func TestExistingProof(t *testing.T) {
@@ -98,7 +100,8 @@ func TestExistingProof(t *testing.T) {
 				tree.Add([]byte(leaf))
 			}
 			var proof []Proof
-			proof = tree.Proof(Hash([]byte(ti.leaf)))
+			proof, err := tree.Proof(Hash([]byte(ti.leaf)))
+			assert.Nil(t, err)
 			assert.Equal(t, ti.want_size, len(proof))
 		})
 	}
@@ -135,7 +138,8 @@ func TestVerifyProof(t *testing.T) {
 			// generate and verify a proof for every leaf
 			for _, leaf := range ti.leafs {
 				var proof []Proof
-				proof = tree.Proof(Hash([]byte(leaf)))
+				proof, err := tree.Proof(Hash([]byte(leaf)))
+				assert.Nil(t, err)
 				assert.Equal(t, true, tree.Verify(Hash([]byte(leaf)), proof))
 			}
 		})
@@ -146,6 +150,7 @@ func TestNonExistingVerify(t *testing.T) {
 	tree := New(Hash([]byte("foo")))
 	tree.Add([]byte("bar"))
 
-	proof := tree.Proof(Hash([]byte("bar")))
+	proof, err := tree.Proof(Hash([]byte("bar")))
+	assert.Nil(t, err)
 	assert.Equal(t, false, tree.Verify(Hash([]byte("baz")), proof))
 }

@@ -59,7 +59,7 @@ func (t *Tree) Add(value []byte) {
 	t.root = n
 }
 
-func (t *Tree) Proof(hash []byte) []Proof {
+func (t *Tree) Proof(hash []byte) ([]Proof, error) {
 	// create a slice of proofs
 	var acc0 []Proof
 	return proof(hash, t.root, acc0)
@@ -98,16 +98,16 @@ func verify(valueHash []byte, proof []Proof) []byte {
 
 // proof returns a slice containing a proof of existence
 // of the provided hash in the tree
-func proof(hash []byte, n *Node, acc0 []Proof) []Proof {
+func proof(hash []byte, n *Node, acc0 []Proof) ([]Proof, error) {
 	// we got to the left leaf node, if this is not the
 	// hash we're looking for then this means that it doesn't
 	// exist in the tree. If it is then just return whatever
 	// proof we've accumulated so far
 	if isLeaf(n) {
 		if bytes.Equal(hash, n.Hash()) {
-			return acc0
+			return acc0, nil
 		}
-		return nil
+		return nil, NotFoundError{}
 	}
 	// not a leaf node
 
@@ -118,7 +118,7 @@ func proof(hash []byte, n *Node, acc0 []Proof) []Proof {
 		// found the provided hash, append the hash
 		// of the co-node and return
 		return append(acc0, Proof{side: Left,
-			hash: n.left.Hash()})
+			hash: n.left.Hash()}), nil
 	}
 
 	// continue searching on the left hand side of the tree
