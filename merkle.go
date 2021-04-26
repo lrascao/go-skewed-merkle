@@ -1,11 +1,11 @@
-package merkle
+package skewed_merkle
 
 import (
 	"bytes"
 	"crypto/sha256"
-	"fmt"
 )
 
+// New creates a new Skewed Merkle tree
 func New(hash []byte) Tree {
 	return Tree{
 		root: &Node{height: 0,
@@ -15,42 +15,41 @@ func New(hash []byte) Tree {
 	}
 }
 
+// Hash creates a SHA256 hash of the provided value
 func Hash(value []byte) []byte {
 	h := sha256.Sum256(value)
 	return h[:]
 }
 
-func IsLeaf(n *Node) bool {
-	return n.left == nil && n.right == nil
-}
-
+// Hash returns the tree root hash
 func (t Tree) Hash() []byte {
 	return t.root.hash
 }
 
+// Height returns the height of the tree
 func (t Tree) Height() int {
 	return t.root.height
 }
 
+// Height returns the height that the node is at
 func (n Node) Height() int {
 	return n.height
 }
 
+// Hash returns the node's hash
 func (n Node) Hash() []byte {
 	return n.hash
 }
 
+// Add adds a new value to the tree
 func (t *Tree) Add(value []byte) {
 	valueHash := sha256.Sum256(value)
-	// find hash(rootHash + valueHash)
-	nodeHash := sha256.New()
-	nodeHash.Write(t.Hash())
-	nodeHash.Write(valueHash[:])
 
 	// notice how the left arm of this node will now point to the
-	// previous tree root, this is where the skewing comes into effect
+	// previous tree root, this is where the skewing happens
 	n := &Node{height: t.root.Height() + 1,
-		hash: nodeHash.Sum(nil),
+		// find hash(rootHash + valueHash)
+		hash: hash(t.Hash(), valueHash[:]),
 		left: t.root,
 		right: &Node{hash: valueHash[:],
 			left:  nil,
@@ -60,14 +59,14 @@ func (t *Tree) Add(value []byte) {
 	t.root = n
 }
 
-func (t *Tree) Proof(hash []byte) [][]byte {
-	// create a slice of byte slices with capacity at the height of the tree
-	var acc0 [][]byte
+func (t *Tree) Proof(hash []byte) []Proof {
+	// create a slice of proofs
+	var acc0 []Proof
 	return proof(hash, t.root, acc0)
 }
 
-func (t *Tree) Verify(hash []byte, proof [][]byte) bool {
-	if bytes.Equal(t.root.Hash(), verify(hash, t.root, proof)) {
+func (t *Tree) Verify(hash []byte, proof []Proof) bool {
+	if bytes.Equal(t.root.Hash(), verify(hash, proof)) {
 		return true
 	}
 	return false
@@ -77,24 +76,34 @@ func (t *Tree) Verify(hash []byte, proof [][]byte) bool {
 // Internal functions
 //
 
-func verify(hash []byte, n *Node, proof [][]byte) []byte {
-	if IsLeaf(n) {
-		return hash
+// verify returns the hashed proof with the provided hash
+func verify(valueHash []byte, proof []Proof) []byte {
+	// we've gone through the whole proof slice, ie.
+	// we're at the tree leaf now, return the valuehash
+	// so the recursion can unwind
+	if len(proof) == 0 {
+		return valueHash
 	}
-
-	// pop the top of the stack
+	// pop the top of the proof stack
 	proof0, proof := proof[0], proof[1:]
-	fmt.Printf("proof0: %x\n", proof0)
 
-	return verify(hash, n.left, proof)
+	// if this proof entry came from a left hand leaf
+	// then we need to hash(L, R) to keep the correct order
+	if proof0.side == Left {
+		return hash(proof0.hash, verify(valueHash, proof))
+	}
+	// normal case, proof came from a right hand side leaf
+	return hash(verify(valueHash, proof), proof0.hash)
 }
 
-func proof(hash []byte, n *Node, acc0 [][]byte) [][]byte {
+// proof returns a slice containing a proof of existence
+// of the provided hash in the tree
+func proof(hash []byte, n *Node, acc0 []Proof) []Proof {
 	// we got to the left leaf node, if this is not the
 	// hash we're looking for then this means that it doesn't
 	// exist in the tree. If it is then just return whatever
 	// proof we've accumulated so far
-	if IsLeaf(n) {
+	if isLeaf(n) {
 		if bytes.Equal(hash, n.Hash()) {
 			return acc0
 		}
@@ -106,10 +115,27 @@ func proof(hash []byte, n *Node, acc0 [][]byte) [][]byte {
 	// away at just peeking at the hash value of the right
 	// hand side of every node
 	if bytes.Equal(n.right.Hash(), hash) {
-		// we found the provided hash, we can now
-		// return the accumulated proof
-		return append(acc0, n.left.Hash())
+		// found the provided hash, append the hash
+		// of the co-node and return
+		return append(acc0, Proof{side: Left,
+			hash: n.left.Hash()})
 	}
 
-	return proof(hash, n.left, append(acc0, n.right.Hash()))
+	// continue searching on the left hand side of the tree
+	return proof(hash, n.left, append(acc0, Proof{side: Right,
+		hash: n.right.Hash()}))
+}
+
+// hash hashes two concatenated byte slices
+func hash(h1 []byte, h2 []byte) []byte {
+	h := sha256.New()
+	h.Write(h1)
+	h.Write(h2)
+	r := h.Sum(nil)
+	return r
+}
+
+// isLeaf returns a boolean wether if it it's a leaf node or not
+func isLeaf(n *Node) bool {
+	return n.left == nil && n.right == nil
 }
