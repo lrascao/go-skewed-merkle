@@ -6,7 +6,8 @@ import (
 )
 
 // New creates a new Skewed Merkle tree
-func New(hash []byte) Tree {
+func New(value []byte) Tree {
+	hash := Hash(value)
 	return Tree{
 		root: &Node{height: 0,
 			hash:  hash[:],

@@ -9,7 +9,7 @@ import (
 
 func TestRootHashOnCreate(t *testing.T) {
 	// create a root node with custom hash
-	tree := New(Hash([]byte("foo")))
+	tree := New([]byte("foo"))
 	// no way hash("foo") turns out to be all zeros
 	if bytes.Equal(tree.Hash(), []byte{0, 0, 0, 0}) {
 		t.Error("invalid root hash")
@@ -40,7 +40,7 @@ func TestTreeHeight(t *testing.T) {
 	} {
 		t.Run("", func(t *testing.T) {
 
-			tree := New(Hash([]byte("foo")))
+			tree := New([]byte("foo"))
 			// add all the leafs
 			for _, leaf := range ti.leafs {
 				tree.Add([]byte(leaf))
@@ -51,7 +51,7 @@ func TestTreeHeight(t *testing.T) {
 }
 
 func TestNonExistingProof(t *testing.T) {
-	tree := New(Hash([]byte("foo")))
+	tree := New([]byte("foo"))
 	tree.Add([]byte("bar"))
 
 	proof, err := tree.Proof(Hash([]byte("baz")))
@@ -94,7 +94,7 @@ func TestExistingProof(t *testing.T) {
 	} {
 		t.Run("", func(t *testing.T) {
 
-			tree := New(Hash([]byte("foo")))
+			tree := New([]byte("foo"))
 			// add all the leafs
 			for _, leaf := range ti.leafs {
 				tree.Add([]byte(leaf))
@@ -129,7 +129,7 @@ func TestVerifyProof(t *testing.T) {
 	} {
 		t.Run("", func(t *testing.T) {
 
-			tree := New(Hash([]byte("foo")))
+			tree := New([]byte("foo"))
 			// add all the leafs
 			for _, leaf := range ti.leafs {
 				tree.Add([]byte(leaf))
@@ -147,7 +147,7 @@ func TestVerifyProof(t *testing.T) {
 }
 
 func TestNonExistingVerify(t *testing.T) {
-	tree := New(Hash([]byte("foo")))
+	tree := New([]byte("foo"))
 	tree.Add([]byte("bar"))
 
 	proof, err := tree.Proof(Hash([]byte("bar")))
