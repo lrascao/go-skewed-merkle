@@ -60,13 +60,15 @@ func (t *Tree) Add(value []byte) {
 	t.root = n
 }
 
-func (t *Tree) Proof(hash []byte) ([]Proof, error) {
+func (t *Tree) Proof(value []byte) ([]Proof, error) {
+	hash := Hash(value)
 	// create a slice of proofs
 	var acc0 []Proof
 	return proof(hash, t.root, acc0)
 }
 
-func (t *Tree) Verify(hash []byte, proof []Proof) bool {
+func (t *Tree) Verify(value []byte, proof []Proof) bool {
+	hash := Hash(value)
 	if bytes.Equal(t.root.Hash(), verify(hash, proof)) {
 		return true
 	}
